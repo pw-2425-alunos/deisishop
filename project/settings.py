@@ -25,11 +25,16 @@ SECRET_KEY = 'django-insecure-^k_*9a2)e&&&yrfm^!xum^mda$*+#23l)j#1&imd^5fyh@xubc
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['deisishop.pw.deisi.ulusofona.pt']
+ALLOWED_HOSTS = [
+    "deisishop.pw.deisi.ulusofona.pt",
+]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://deisishop.pw.deisi.ulusofona.pt",
+    "http://deisishop.pw.deisi.ulusofona.pt",
 ]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Application definition
 
