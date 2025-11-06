@@ -1,0 +1,309 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "DEISI Shop API",
+    "description": "API para a loja DEISI Shop, incluindo endpoints para produtos, categorias e compras. Aqui encontra a descrição da API e seus EndPoints",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://deisishop.pythonanywhere.com"
+    }
+  ],
+  "tags": [
+    {
+      "name": "shop",
+      "description": "Endpoints que tem disponíveis da DEISIshop"
+    }
+  ],
+  "paths": {
+    "/categories/": {
+      "get": {
+        "tags": [
+          "shop"
+        ],
+        "summary": "Retorna todas as categorias de produtos existentes na loja.",
+        "operationId": "getCategories",
+        "responses": {
+          "200": {
+            "description": "Lista de categorias disponíveis.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "example": "T-shirts"
+                  }
+                },
+                "example": [
+                  "T-shirts",
+                  "Canecas",
+                  "Meias"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/": {
+      "get": {
+        "tags": [
+          "shop"
+        ],
+        "summary": "Retorna todos os produtos existentes na loja.",
+        "operationId": "getProducts",
+        "responses": {
+          "200": {
+            "description": "Lista de produtos na loja.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "example": 1
+                      },
+                      "title": {
+                        "type": "string",
+                        "example": "A Matemática do Binário - Fácil!"
+                      },
+                      "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 22.5
+                      },
+                      "description": {
+                        "type": "string",
+                        "example": "Mostra ao mundo que percebes de matemática fora da caixa..."
+                      },
+                      "category": {
+                        "$ref": "#/components/schemas/Category"
+                      },
+                      "image": {
+                        "type": "string",
+                        "format": "uri",
+                        "example": "https://deisishop.pythonanywhere.com/media/produto_imagens/tshirt-1-1.png"
+                      },
+                      "rating": {
+                        "$ref": "#/components/schemas/Rating"
+                      }
+                    }
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "title": "A Matemática do Binário - Fácil!",
+                    "price": 22.5,
+                    "description": "Mostra ao mundo que percebes de matemática fora da caixa!...",
+                    "category": "T-shirts",
+                    "image": "https://deisishop.pythonanywhere.com/media/produto_imagens/tshirt-1-1.png",
+                    "rating": {
+                      "rate": 4.7,
+                      "count": 200
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/buy/": {
+      "post": {
+        "tags": [
+          "shop"
+        ],
+        "summary": "Recebe uma lista de ids de produtos, indicação se é estudante, eventualmente um coupon de desconto, e um nome. Retorna o valor final a pagar pelos produtos, após descontos, assim como uma referência de pagamento.",
+        "operationId": "postBuy",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "products": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "example": 1
+                    }
+                  },
+                  "student": {
+                    "type": "boolean",
+                    "example": true
+                  },
+                  "coupon": {
+                    "type": "string",
+                    "example": "black-friday"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Maria Lisboa"
+                  }
+                },
+                "required": [
+                  "products",
+                  "student",
+                  "coupon",
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Retorna o custo total, a referência de pagamento e uma mensagem.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "totalCost": {
+                      "type": "string",
+                      "example": "23.43"
+                    },
+                    "reference": {
+                      "type": "string",
+                      "example": "201124-0004"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Excelente escolha, Maria Lisboa! A DEISI Shop agradece a sua preferência!"
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": ""
+                    }
+                  }
+                },
+                "example": {
+                  "totalCost": "23.43",
+                  "reference": "201124-0004",
+                  "example": "Excelente escolha, Maria Lisboa! A DEISI Shop agradece a sua preferência!",
+                  "error": ""
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erro de validação ou dados inválidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "No products provided"
+                    }
+                  }
+                },
+                "example": {
+                  "error": "No products provided"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Método HTTP inválido. Necessário utilizar o método POST.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Invalid HTTP method. Use HTTP POST."
+                    }
+                  }
+                },
+                "example": {
+                  "error": "Invalid HTTP method. Use HTTP POST."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "t-shirts"
+          }
+        },
+        "xml": {
+          "name": "category"
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "A Matemática do Binário - Fácil!"
+          },
+          "price": {
+            "type": "number",
+            "format": "float",
+            "example": 22.5
+          },
+          "description": {
+            "type": "string",
+            "example": "Mostra ao mundo que percebes de matemática fora da caixa..."
+          },
+          "category": {
+            "type": "string",
+            "example": "t-shirts",
+          },
+          "image": {
+            "type": "string",
+            "format": "uri",
+            "example": "https://deisishop.pythonanywhere.com/media/produto_imagens/tshirt-1-1.png"
+          },
+          "rating": {
+            "$ref": "#/components/schemas/Rating"
+          }
+        },
+        "xml": {
+          "name": "category"
+        }
+      },
+      "Rating": {
+        "type": "object",
+        "properties": {
+          "rate": {
+            "type": "number",
+            "format": "float",
+            "example": 4.7
+          },
+          "count": {
+            "type": "integer",
+            "example": 200
+          }
+        },
+        "xml": {
+          "name": "product"
+        }
+      }
+    }
+  }
+}

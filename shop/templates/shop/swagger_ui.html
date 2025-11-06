@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEISI Shop API</title>
+
+    <!-- Include Swagger UI CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css" rel="stylesheet" type="text/css"/>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+
+    <!-- Include Swagger UI JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-standalone-preset.js"></script>
+
+    <script>
+        const ui = SwaggerUIBundle({
+            url: '/static/swagger/openapi.json',  // Path to your Swagger JSON file
+            dom_id: '#swagger-ui',
+            deepLinking: true,
+            presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIBundle.presets.shortcuts
+            ],
+            layout: "BaseLayout" // Use BaseLayout instead of StandaloneLayout
+        });
+    </script>
+</body>
+</html>

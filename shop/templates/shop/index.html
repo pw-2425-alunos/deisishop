@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DEISI Shop</title>
+    {% load static %}
+  <link rel="shortcut icon" type="image/png" href="{% static 'shop/deisi-ball.png' %}">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin:0;
+      padding: 0;
+      background: url('https://cdn.pixabay.com/photo/2016/06/02/02/33/triangles-1430105_1280.png');
+      /* background-size: 100vw 100vh; */
+      background-size: cover;
+      /* Maintain aspect ratio and cover entire container */
+      background-position: center;
+      /* Center the background image */
+      background-repeat: no-repeat;
+      min-height: 100vh;
+    }
+
+    header img {
+      height: 40px;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      left:0;
+      width: 100vw;
+      padding: 10px;
+      background-color: purple;
+      color: white;
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+
+    main {
+      margin: 50px;
+      margin-top: 90px;
+      padding: 20px;
+    }
+
+    section {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px;
+    }
+
+    pre,
+    code {
+      background: whitesmoke;
+      padding: 5px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 30px;
+      position: fixed;
+      bottom: 0;
+      background-color: purple;
+      padding: 20px;
+      width: 100vw;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+
+    <img src="{% static 'shop/deisi-inverse.svg' %}" alt="logotipo do DEISI">
+    <h1 style="padding-right:20px;">Loja DEISI</h1>
+    </nav>
+  </header>
+  <main>
+    <section>
+      <p>Esta API disponibiliza vários endpoints da aplicação DEISI Shop.</p>
+      <h4>Base URL: <code>https://deisishop.pythonanywhere.com/[endpoint]</code></h4>
+    </section>
+
+    <section>
+      <h2>Endpoint: <code>categories/</code></h2>
+      <h4>Método HTTP: <code>GET</code></h4>
+      <p>Retorna as categorias existentes na aplicação</p>
+      <h4>Exemplo de pedido</h4>
+      <pre>https://deisishop.pythonanywhere.com/categories/</pre>
+      <h4>Exemplo de resposta</h4>
+      <pre>[
+  "T-shirts",
+  "Canecas",
+  "Meias"
+]</pre>
+    </section>
+    <section>
+      <h2>Endpoint: <code>products/</code></h2>
+      <h4>Método HTTP: <code>GET</code></h4>
+      <p>Retorna os produtos existentes</p>
+      <h4>Exemplo de pedido</h4>
+      <pre>https://deisishop.pythonanywhere.com/products/</pre>
+      <h4>Exemplo de resposta</h4>
+<pre>[
+  {
+    "id": 1,
+    "title": "A Matemática do Binário - Fácil!",
+    "price": "22.50",
+    "description": "Mostra ao mundo que percebes de matemática
+    fora da caixa! Com esta t-shirt, podes provar que 1 + 1 = 10...
+    mas só para os génios da programação e entusiastas do sistema
+    binário. Perfeita para descontrair o ambiente e deixar toda
+    a gente a pensar. Quem disse que estilo e código não combinam?",
+    "category": "T-shirts",
+    "image": "https://deisishop.pythonanywhere.com/media/produto_imagens/tshirt-1-1.png",
+    "rating": {
+      "rate": 4.7,
+      "count": 200
+    }
+  },
+  ...
+]</pre>
+    </section>
+    <section>
+      <h2>Endpoint: <code>buy/</code></h2>
+      <h4>Método HTTP: <code>POST</code></h4>
+      <p>Recebe uma lista de ids de produtos para comprar, assim como informação se é estudante, um cupão e um nome. Retorna o preço final, assim como uma referencia para pagamento</p>
+      <h4>Exemplo de pedido</h4>
+      <pre>https://deisishop.pythonanywhere.com/buy/</pre>
+      Tendo no body
+<pre>{
+    products: [1, 2, 3],
+    student: true,
+    coupon: black-friday,
+    name: Maria Lisboa,
+}
+</pre>
+
+
+      <h4>Exemplo de resposta</h4>
+<pre>{
+    cost: 23.43,
+    reference: "201124-0004",
+    message: "Maria Lisboa, recebemos a sua encomenda!",
+    error: "",
+}
+</pre>
+  </section>
+  </main>
+  <footer>© 2024, Desenvolvimento de Interfaces Web, Lusófona</footer>
+</body>
+
+</html>
