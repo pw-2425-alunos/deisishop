@@ -10,13 +10,13 @@ urlpatterns = [
 
     path('categories/', views.categories_view, name='categories'),
     path('products/', views.products_view, name='products'),
-    path('product/<int:product_id>/', views.product_view, name='product'),
+    path('products/<int:product_id>/', views.product_view, name='product'),
     path('buy/', views.buy_view, name='buy'),
 
 
 
     path('categories', views.categories_view),
     path('products', views.products_view),
-    path('product/<int:product_id>', views.product_view),
+    path('products/<int:product_id>', views.product_view),
     path('buy', views.buy_view),
 ]
