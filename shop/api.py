@@ -1,167 +1,256 @@
-# api.py
-from ninja import NinjaAPI
-from .models import Product, Category
-from .schemas import *
+import uuid
+from datetime import datetime
+from decimal import Decimal
 from typing import List
 
+from django.db import transaction
+from django.db.models import ProtectedError
+from django.shortcuts import get_object_or_404
+from ninja import File, NinjaAPI, Router
+from ninja.files import UploadedFile
 
-### copiado de views.py
-
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-from decimal import Decimal
-from datetime import datetime
-
-ref_number = 0
-
-###
-
-
+from .models import Category, Product, Rating
+from .schemas import (
+    BuyRequestSchema,
+    BuyResponseSchema,
+    CategoryIn,
+    CategoryPatch,
+    CategorySchema,
+    ErrorSchema,
+    ProductIn,
+    ProductPatch,
+    ProductSchema,
+)
 
 api = NinjaAPI(
-  title="DEISI Shop API",
-  description="""API para a loja DEISI Shop, incluindo endpoints para produtos, categorias e compras. Aqui encontra a descrição da API e seus EndPoints""",
-  version="1.0.0"
+    title="DEISI Shop API",
+    description="API para a loja DEISI Shop, incluindo endpoints para produtos, categorias e compras.",
+    version="1.0.0",
 )
 
+COUPONS = {
+    "black-friday": Decimal("0.90"),
+    "diw": Decimal("0.10"),
+}
+STUDENT_FACTOR = Decimal("0.75")
+IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+
+@api.exception_handler(Exception)
+def unhandled_error(request, exc):
+    return api.create_response(request, {"error": "Erro interno do servidor"}, status=500)
+
+
+def products_qs():
+    return Product.objects.select_related("category", "rating")
+
+
 # ---------------------------------------------------
-# categories/
+# categories
 # ---------------------------------------------------
-@api.get("categories/",
-        response=List[CategorySchema],
-        tags=["Shop"],
-	    description="Lista todas as categorias de produtos"
-)
-@api.get("categories",
-        response=List[CategorySchema],
-        tags=["Shop"],
-	    description="Lista todas as categorias de produtos"
-)
-def lista_categorias(request):
+categories = Router(tags=["Categories"])
+
+
+@categories.get("", response=List[CategorySchema], summary="Lista categorias")
+def list_categories(request):
     return Category.objects.all()
 
-# ---------------------------------------------------
-# products/
-# ---------------------------------------------------
-@api.get("products/",
-        response=List[ProductSchema],
-        tags=["Shop"],
-	    description="Lista todos os produtos")
-@api.get("products",
-        response=List[ProductSchema],
-        tags=["Shop"],
-	    description="Lista todos os produtos")
-def lista_produtos(request):
-    # return Product.objects.all()
-    produtos = Product.objects.select_related("category", "rating").all()
 
-    return [
-        {
-            "id": p.id,
-            "title": p.title,
-            "price": float(p.price),
-            "description": p.description,
-            "category": p.category.name,
-            "image": p.image.url if p.image else None,
-            "rating": {
-                "rate": p.rating.rate,
-                "count": p.rating.count
-            }
-        }
-        for p in produtos
-    ]
-
-
-# ---------------------------------------------------
-# products/{id}
-# ---------------------------------------------------
-@api.get("products/{id}",
-        response={200: ProductSchema, 404: ErrorSchema},
-        tags=["Shop"],
-	    description="Retorna um produto"
+@categories.post(
+    "", response={201: CategorySchema, 422: ErrorSchema}, summary="Cria categoria"
 )
-def get_produto(request, id: int):
-    # return 200, get_object_or_404(Product, id=id)
-    try:
-        p = Product.objects.select_related("category", "rating").get(id=id)
-    except Product.DoesNotExist:
-        return 404, {"message": "Produto não encontrado"}
-
-    produto = {
-        "id": p.id,
-        "title": p.title,
-        "price": float(p.price),
-        "description": p.description,
-        "category": p.category.name,
-        "image": request.build_absolute_uri(p.image.url) if p.image else None,
-        "rating": {
-            "rate": p.rating.rate,
-            "count": p.rating.count,
-        }
-    }
-
-    return 200, produto
+def create_category(request, data: CategoryIn):
+    return 201, Category.objects.create(name=data.name)
 
 
-# ---------------------------------------------------
-# buy/
-# ---------------------------------------------------
-@api.post(
-    "buy/",
-    response={200: BuyResponseSchema, 400: ErrorSchema},
-    tags=["Shop"],
-    description="Recebe produtos, aplica descontos e devolve total + referência"
+@categories.get(
+    "{category_id}",
+    response={200: CategorySchema, 404: ErrorSchema},
+    summary="Obtém categoria",
 )
+def get_category(request, category_id: int):
+    return get_object_or_404(Category, id=category_id)
+
+
+@categories.put(
+    "{category_id}",
+    response={200: CategorySchema, 404: ErrorSchema},
+    summary="Substitui categoria",
+)
+def replace_category(request, category_id: int, data: CategoryIn):
+    category = get_object_or_404(Category, id=category_id)
+    category.name = data.name
+    category.save()
+    return category
+
+
+@categories.patch(
+    "{category_id}",
+    response={200: CategorySchema, 404: ErrorSchema},
+    summary="Atualiza categoria parcialmente",
+)
+def update_category(request, category_id: int, data: CategoryPatch):
+    category = get_object_or_404(Category, id=category_id)
+    for field, value in data.dict(exclude_unset=True).items():
+        setattr(category, field, value)
+    category.save()
+    return category
+
+
+@categories.delete(
+    "{category_id}",
+    response={204: None, 404: ErrorSchema},
+    summary="Remove categoria (e os seus produtos)",
+)
+def delete_category(request, category_id: int):
+    get_object_or_404(Category, id=category_id).delete()
+    return 204, None
+
+
+# ---------------------------------------------------
+# products
+# ---------------------------------------------------
+products = Router(tags=["Products"])
+
+
+@products.get("", response=List[ProductSchema], summary="Lista produtos")
+def list_products(request, category_id: int = None):
+    qs = products_qs()
+    if category_id is not None:
+        qs = qs.filter(category_id=category_id)
+    return qs
+
+
+@products.post(
+    "",
+    response={201: ProductSchema, 404: ErrorSchema},
+    summary="Cria produto (a imagem é enviada em /products/{id}/image)",
+)
+def create_product(request, data: ProductIn):
+    category = get_object_or_404(Category, id=data.category_id)
+    with transaction.atomic():
+        rating = Rating.objects.create(**data.rating.dict())
+        product = Product.objects.create(
+            title=data.title,
+            price=data.price,
+            description=data.description,
+            category=category,
+            rating=rating,
+        )
+    return 201, products_qs().get(id=product.id)
+
+
+@products.get(
+    "{product_id}",
+    response={200: ProductSchema, 404: ErrorSchema},
+    summary="Obtém produto",
+)
+def get_product(request, product_id: int):
+    return get_object_or_404(products_qs(), id=product_id)
+
+
+@products.put(
+    "{product_id}",
+    response={200: ProductSchema, 404: ErrorSchema},
+    summary="Substitui produto",
+)
+def replace_product(request, product_id: int, data: ProductIn):
+    return _apply_product_changes(product_id, data.dict())
+
+
+@products.patch(
+    "{product_id}",
+    response={200: ProductSchema, 404: ErrorSchema},
+    summary="Atualiza produto parcialmente",
+)
+def update_product(request, product_id: int, data: ProductPatch):
+    return _apply_product_changes(product_id, data.dict(exclude_unset=True))
+
+
+def _apply_product_changes(product_id: int, changes: dict):
+    product = get_object_or_404(products_qs(), id=product_id)
+    rating_changes = changes.pop("rating", None) or {}
+    if "category_id" in changes:
+        product.category = get_object_or_404(Category, id=changes.pop("category_id"))
+    for field, value in changes.items():
+        setattr(product, field, value)
+    for field, value in rating_changes.items():
+        if value is not None:
+            setattr(product.rating, field, value)
+    with transaction.atomic():
+        product.rating.save()
+        product.save()
+    return product
+
+
+@products.post(
+    "{product_id}/image",
+    response={200: ProductSchema, 404: ErrorSchema, 415: ErrorSchema},
+    summary="Define a imagem do produto",
+)
+def set_product_image(request, product_id: int, image: File[UploadedFile]):
+    product = get_object_or_404(products_qs(), id=product_id)
+    if image.content_type not in IMAGE_TYPES:
+        return 415, {"error": "Tipo de ficheiro não suportado"}
+    product.image.save(image.name, image, save=True)
+    return product
+
+
+@products.delete(
+    "{product_id}",
+    response={204: None, 404: ErrorSchema},
+    summary="Remove produto",
+)
+def delete_product(request, product_id: int):
+    product = get_object_or_404(products_qs(), id=product_id)
+    with transaction.atomic():
+        product.rating.delete()  # remove também o produto (CASCADE)
+    return 204, None
+
+
+# ---------------------------------------------------
+# buy
+# ---------------------------------------------------
 @api.post(
     "buy",
-    response={200: BuyResponseSchema, 400: ErrorSchema},
+    response={200: BuyResponseSchema, 400: ErrorSchema, 404: ErrorSchema},
     tags=["Shop"],
-    description="Recebe produtos, aplica descontos e devolve total + referência"
+    summary="Calcula o total da compra e devolve a referência",
 )
 def buy(request, data: BuyRequestSchema):
-    global ref_number
-    context: Dict = {}
-
     if not data.products:
         return 400, {"error": "No products provided"}
 
-    total_cost = Decimal("0.00")
-    for p_id in data.products:
-        try:
-            product = Product.objects.get(id=p_id)
-            total_cost += product.price
-        except Product.DoesNotExist:
-            return 400, {"error": f"Invalid product id: {p_id}"}
+    found = Product.objects.in_bulk(set(data.products))
+    missing = sorted(set(data.products) - found.keys())
+    if missing:
+        return 404, {"error": f"Invalid product id: {missing[0]}"}
 
-    # Aplicar desconto de estudante
+    total = sum((found[p_id].price for p_id in data.products), Decimal("0.00"))
+
     if data.student:
-        total_cost *= Decimal("0.75")
+        total *= STUDENT_FACTOR
 
-    # Aplicar cupões
-    if data.coupon:
-        if data.coupon.lower() == "black-friday":
-            total_cost *= Decimal("0.90")
-        elif data.coupon.lower() == "diw":
-            total_cost *= Decimal("0.10")
+    coupon = data.coupon.strip().lower()
+    if coupon:
+        if coupon not in COUPONS:
+            return 400, {"error": f"Invalid coupon: {data.coupon}"}
+        total *= COUPONS[coupon]
 
-    # Mensagem para o cliente
-    if data.name:
-        context["message"] = f"Excelente escolha, {data.name}! A DEISI Shop agradece a sua preferência!"
-    else:
-        context["message"] = "Excelente escolha! Falta-nos saber o seu nome!"
+    name = data.name.strip()
+    message = (
+        f"Excelente escolha, {name}! A DEISI Shop agradece a sua preferência!"
+        if name
+        else "Excelente escolha! Falta-nos saber o seu nome!"
+    )
 
-    # Total arredondado
-    context["totalCost"] = str(total_cost.quantize(Decimal("0.01")))
+    return 200, {
+        "totalCost": str(total.quantize(Decimal("0.01"))),
+        "reference": f"{datetime.now():%d%m%y}-{uuid.uuid4().hex[:8].upper()}",
+        "message": message,
+        "error": "",
+    }
 
-    # Referência de pagamento
-    current_date = datetime.now()
-    formatted_date = current_date.strftime("%d%m%y")
-    ref_number += 1
-    context["reference"] = f"{formatted_date}-{ref_number:04d}"
 
-    # Sem erro
-    context["error"] = ""
-
-    return 200, context
+api.add_router("categories", categories)
+api.add_router("products", products)
