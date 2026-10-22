@@ -129,7 +129,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # default static files settings for PythonAnywhere.
 # see https://help.pythonanywhere.com/pages/DjangoStaticFiles for more info
-MEDIA_ROOT = '/home/deisishop/project/media'
+MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
-STATIC_ROOT = '/home/deisishop/project/static'
+STATIC_ROOT = BASE_DIR / 'static'
 STATIC_URL = '/static/'
